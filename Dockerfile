@@ -1,2 +1,1 @@
-FROM nginx:alpine
-COPY . /usr/share/nginx/html
+RUN exit 1
