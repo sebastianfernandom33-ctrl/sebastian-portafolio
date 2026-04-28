@@ -36,7 +36,19 @@ jobs:
     - name: Update kubeconfig
       run: aws eks update-kubeconfig --region us-east-1 --name mi-eks-cluster
 
-    - name: Deploy
+    - name: Deploy with rollback
       run: |
+        set -e
+
+        echo "🚀 Deploying version $TAG"
+
         kubectl set image deployment/web-yaml nginx=sebastianm33/portafolio:$TAG
-        kubectl rollout status deployment web-yaml
+
+        if ! kubectl rollout status deployment web-yaml --timeout=60s; then
+          echo "❌ Deployment failed. Rolling back..."
+          kubectl rollout undo deployment web-yaml
+          kubectl rollout status deployment web-yaml
+          exit 1
+        fi
+
+        echo "✅ Deployment successful"
