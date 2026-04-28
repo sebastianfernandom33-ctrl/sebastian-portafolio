@@ -1,0 +1,38 @@
+name: Deploy to EKS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Login Docker Hub
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    - name: Build and Push Image
+      run: |
+        docker buildx build --platform linux/amd64 \
+          -t sebastianm33/portafolio:latest \
+          --push .
+
+    - name: Configure AWS
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Update kubeconfig
+      run: aws eks update-kubeconfig --region us-east-1 --name mi-eks-cluster
+
+    - name: Deploy
+      run: |
+        kubectl set image deployment/web-yaml nginx=sebastianm33/portafolio:latest
+        kubectl rollout status deployment web-yaml
